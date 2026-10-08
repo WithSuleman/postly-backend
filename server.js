@@ -117,22 +117,34 @@ app.get('/api/health', (_req, res) => {
 });
 
 // MongoDB Connection
-const MONGO_URI =
-  process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/postly';
+const MONGO_URI = process.env.MONGO_URI;
 
-mongoose
-  .connect(MONGO_URI)
-  .then(() => {
-    console.log('✅ Connected to MongoDB database successfully');
-  })
-  .catch((err) => {
-    console.warn(
-      '⚠️ MongoDB connection failed. Please ensure MONGO_URI is set:',
-      err.message
-    );
-  });
+if (!MONGO_URI) {
+  console.error('MONGO_URI is missing');
+}
 
-// Start Express Server
-app.listen(PORT, () => {
-  console.log(`🚀 Postly backend listening on http://localhost:${PORT}`);
+let isConnected = false;
+
+const connectDB = async () => {
+  if (isConnected) return;
+
+  try {
+    await mongoose.connect(MONGO_URI);
+    isConnected = true;
+    console.log('✅ MongoDB connected');
+  } catch (error) {
+    console.error('❌ MongoDB connection failed:', error.message);
+    throw error;
+  }
+};
+
+app.use(async (_req, _res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
+
+export default app;
